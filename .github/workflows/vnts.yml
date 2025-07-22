@@ -74,7 +74,7 @@ jobs:
       STRIP: ${{ matrix.STRIP }}
       FEATURES: ${{ matrix.FEATURES }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4 # MODIFIED: Updated to v4
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
@@ -177,7 +177,7 @@ jobs:
           fi
           echo "build_time=$(date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
       - name: 上传编译产物
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # MODIFIED: Updated to v4
         with:
           name: vnts-release-${{ matrix.TARGET }}
           path: /opt/upx/*
@@ -188,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 下载所有编译产物
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4 # MODIFIED: Updated to v4
         with:
           path: ./artifacts
       - name: 发布
@@ -216,7 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 下载 x86_64 编译产物
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4 # MODIFIED: Updated to v4
         with:
           name: vnts-release-x86_64-unknown-linux-musl
           path: ./vnts-docker
@@ -253,7 +253,7 @@ jobs:
           token: ${{ secrets.c8 }}
           retain_days: 2
           keep_minimum_runs: 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # MODIFIED: Updated to v4
       - name: 检查上次提交日期
         id: check_commit_date
         run: |
