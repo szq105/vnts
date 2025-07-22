@@ -147,8 +147,6 @@ jobs:
           git clone https://github.com/vnt-dev/vnts -b ${{ needs.check.outputs.ver }} /opt/vnts
           cd /opt/vnts
           tar -czf ./WEB_static.tar.gz static
-          # MODIFIED: Added cargo update to resolve dependency issues
-          cargo update
           cargo build --release --target $TARGET --features $FEATURES
       - name: 编译FreeBSD
         if: ${{ matrix.TARGET == 'x86_64-unknown-freebsd' }}
@@ -159,8 +157,6 @@ jobs:
           cd /opt/vnts
           cargo install cross --git https://github.com/cross-rs/cross
           sed -i 's/const CLOCK_ID: ClockId = ClockId::CLOCK_BOOTTIME;/const CLOCK_ID: ClockId = ClockId::CLOCK_MONOTONIC;/g' ./lib/boringtun/src/sleepyinstant/unix.rs
-          # MODIFIED: Added cargo update to resolve dependency issues
-          cargo update
           cross build --target $TARGET --release --features $FEATURES
       - name: 安装 UPX
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
