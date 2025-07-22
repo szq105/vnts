@@ -10,20 +10,20 @@ env:
   TZ: Asia/Shanghai
   
 jobs:
- check:
-  runs-on: ubuntu-latest
-  outputs:
-    ver: ${{ steps.getversion.outputs.ver }}
-    cver: ${{ steps.getversion.outputs.cver }}
-  steps:
-  - name: 检查更新
-    id: getversion
-    run: |
-      ver=`curl https://api.github.com/repos/vnt-dev/vnts/releases/latest | jq -r '.tag_name'`
-      cver=`curl https://api.github.com/repos/lmq8267/vnts/releases/latest | jq -r '.tag_name'`
-      echo "ver=${ver}" >> $GITHUB_OUTPUT
-      echo "cver=${cver}" >> $GITHUB_OUTPUT
- build:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      ver: ${{ steps.getversion.outputs.ver }}
+      cver: ${{ steps.getversion.outputs.cver }}
+    steps:
+      - name: 检查更新
+        id: getversion
+        run: |
+          ver=`curl -s https://api.github.com/repos/vnt-dev/vnts/releases/latest | jq -r '.tag_name'`
+          cver=`curl -s https://api.github.com/repos/lmq8267/vnts/releases/latest | jq -r '.tag_name'`
+          echo "ver=${ver}" >> $GITHUB_OUTPUT
+          echo "cver=${cver}" >> $GITHUB_OUTPUT
+  build:
     needs: check
     if: ${{ needs.check.outputs.ver != needs.check.outputs.cver }}
     strategy:
@@ -32,39 +32,39 @@ jobs:
         include:
           - TARGET: aarch64-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: aarch64-linux-musl-strip
           - TARGET: armv7-unknown-linux-musleabihf
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: armv7l-linux-musleabihf-strip
           - TARGET: armv7-unknown-linux-musleabi
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: armv7m-linux-musleabi-strip
           - TARGET: arm-unknown-linux-musleabihf
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: arm-linux-musleabihf-strip
           - TARGET: arm-unknown-linux-musleabi
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: arm-linux-musleabi-strip
           - TARGET: mipsel-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: mipsel-linux-musl-strip
           - TARGET: mips-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal
+            FEATURES: normal,wg      # MODIFIED: Added 'wg' feature (web is not supported on mips)
             STRIP: mips-linux-musl-strip
           - TARGET: x86_64-unknown-linux-musl
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
             STRIP: strip
           - TARGET: x86_64-unknown-freebsd
             OS: ubuntu-latest
-            FEATURES: normal,web
+            FEATURES: normal,web,wg  # MODIFIED: Added 'wg' feature
     runs-on: ${{ matrix.OS }}
     env:
       NAME: vnts_${{ matrix.TARGET }}
@@ -77,67 +77,67 @@ jobs:
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
-            case $TARGET in 
-              mipsel-unknown-linux-musl)
-                MUSL_URI=mipsel-linux-musl-cross
-                ;;
-              aarch64-unknown-linux-musl)
-                MUSL_URI=aarch64-linux-musl-cross
-                ;;
-              armv7-unknown-linux-musleabihf)
-                MUSL_URI=armv7l-linux-musleabihf-cross
-                ;;
-              armv7-unknown-linux-musleabi)
-                MUSL_URI=armv7m-linux-musleabi-cross
-                ;;
-              arm-unknown-linux-musleabihf)
-                MUSL_URI=arm-linux-musleabihf-cross
-                ;;
-              arm-unknown-linux-musleabi)
-                MUSL_URI=arm-linux-musleabi-cross
-                ;;
-              mips-unknown-linux-musl)
-                MUSL_URI=mips-linux-musl-cross
-                ;;
-            esac
-              echo "MUSL_URI=${MUSL_URI}" >> $GITHUB_ENV
-              mkdir -p /opt/musl_gcc 
-              wget -c https://github.com/lmq8267/Toolchain/releases/download/musl-cross/$MUSL_URI.tgz -P /opt/musl_gcc/
-              tar zxf /opt/musl_gcc/$MUSL_URI.tgz -C /opt/musl_gcc/
-              sudo ln -s /opt/musl_gcc/$MUSL_URI/bin/*gcc /usr/bin/
-            if [[ $TARGET == mips-unknown-linux-musl ]] || [[ $TARGET == mipsel-unknown-linux-musl ]] ; then
-            rustup install 1.72.1
-            rustup default 1.72.1
-            fi
-            if [[ $TARGET =~ "x86_64-unknown-linux-musl" ]] ; then
-              sudo apt-get update && sudo apt-get install -qq musl-tools
-            fi
-            sudo timedatectl set-timezone "Asia/Shanghai"
-            cat >>~/.cargo/config <<EOF
-            [target.x86_64-unknown-linux-musl]
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.aarch64-unknown-linux-musl]
-            linker = "aarch64-linux-musl-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.armv7-unknown-linux-musleabihf]
-            linker = "armv7l-linux-musleabihf-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.armv7-unknown-linux-musleabi]
-            linker = "armv7m-linux-musleabi-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.arm-unknown-linux-musleabihf]
-            linker = "arm-linux-musleabihf-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.arm-unknown-linux-musleabi]
-            linker = "arm-linux-musleabi-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.mipsel-unknown-linux-musl]
-            linker = "mipsel-linux-musl-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
-            [target.mips-unknown-linux-musl]
-            linker = "mips-linux-musl-gcc"
-            rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]  
-            EOF
+          case $TARGET in 
+            mipsel-unknown-linux-musl)
+              MUSL_URI=mipsel-linux-musl-cross
+              ;;
+            aarch64-unknown-linux-musl)
+              MUSL_URI=aarch64-linux-musl-cross
+              ;;
+            armv7-unknown-linux-musleabihf)
+              MUSL_URI=armv7l-linux-musleabihf-cross
+              ;;
+            armv7-unknown-linux-musleabi)
+              MUSL_URI=armv7m-linux-musleabi-cross
+              ;;
+            arm-unknown-linux-musleabihf)
+              MUSL_URI=arm-linux-musleabihf-cross
+              ;;
+            arm-unknown-linux-musleabi)
+              MUSL_URI=arm-linux-musleabi-cross
+              ;;
+            mips-unknown-linux-musl)
+              MUSL_URI=mips-linux-musl-cross
+              ;;
+          esac
+            echo "MUSL_URI=${MUSL_URI}" >> $GITHUB_ENV
+            mkdir -p /opt/musl_gcc 
+            wget -c https://github.com/lmq8267/Toolchain/releases/download/musl-cross/$MUSL_URI.tgz -P /opt/musl_gcc/
+            tar zxf /opt/musl_gcc/$MUSL_URI.tgz -C /opt/musl_gcc/
+            sudo ln -s /opt/musl_gcc/$MUSL_URI/bin/*gcc /usr/bin/
+          if [[ $TARGET == mips-unknown-linux-musl ]] || [[ $TARGET == mipsel-unknown-linux-musl ]] ; then
+          rustup install 1.72.1
+          rustup default 1.72.1
+          fi
+          if [[ $TARGET =~ "x86_64-unknown-linux-musl" ]] ; then
+            sudo apt-get update && sudo apt-get install -qq musl-tools
+          fi
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          cat >>~/.cargo/config <<EOF
+          [target.x86_64-unknown-linux-musl]
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.aarch64-unknown-linux-musl]
+          linker = "aarch64-linux-musl-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.armv7-unknown-linux-musleabihf]
+          linker = "armv7l-linux-musleabihf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.armv7-unknown-linux-musleabi]
+          linker = "armv7m-linux-musleabi-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.arm-unknown-linux-musleabihf]
+          linker = "arm-linux-musleabihf-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.arm-unknown-linux-musleabi]
+          linker = "arm-linux-musleabi-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.mipsel-unknown-linux-musl]
+          linker = "mipsel-linux-musl-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]
+          [target.mips-unknown-linux-musl]
+          linker = "mips-linux-musl-gcc"
+          rustflags = ["-C", "target-feature=+crt-static","-C", "strip=symbols"]  
+          EOF
       - name: 添加编译平台
         run: rustup target add $TARGET
       - name: 开始编译
@@ -146,12 +146,6 @@ jobs:
           git clone https://github.com/vnt-dev/vnts -b ${{ needs.check.outputs.ver }} /opt/vnts
           cd /opt/vnts
           tar -czf ./WEB_static.tar.gz static
-          #if [[ $TARGET == aarch64-unknown-linux-musl ]] || [[ $TARGET == armv7-unknown-linux-musleabi ]] || [[ $TARGET == arm-unknown-linux-musleabi ]] ; then
-          #sed -i 's|key/|/tmp/key/|g' ./src/cipher/rsa_cipher.rs
-          #sed -i 's|create_dir|create_dir_all|g' ./src/cipher/rsa_cipher.rs
-          #sed -i 's|let path = PathBuf::from("key");|let path = PathBuf::from("/tmp/key");|g' ./src/cipher/rsa_cipher.rs
-          #fi
-          #sed -i 's|= "3.2.0"|= "=3.2.0"|g' ./Cargo.toml
           cargo build --release --target $TARGET --features $FEATURES
       - name: 编译FreeBSD
         if: ${{ matrix.TARGET == 'x86_64-unknown-freebsd' }}
@@ -186,56 +180,53 @@ jobs:
         with:
           token: ${{ secrets.c8 }}
           body: |
-           > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)![](https://img.shields.io/docker/image-size/lmq8267/vnts/${{ needs.check.outputs.ver }}?label=%E9%95%9C%E5%83%8F%E5%A4%A7%E5%B0%8F&link=https%3A%2F%2Fhub.docker.com%2Fr%2Flmq8267%2Fvnts&logo=docker) 
-           
-           这是各平台的压缩版程序
-           
-           -musleabi：只支持软件浮点的设备
-           -musleabihf：支持硬件浮点的设备
-           
-           mips不支持web管理！
-           
-           [官方更新说明](https://github.com/vnt-dev/vnts/releases)
-           
+            > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)![](https://img.shields.io/docker/image-size/lmq8267/vnts/${{ needs.check.outputs.ver }}?label=%E9%95%9C%E5%83%8F%E5%A4%A7%E5%B0%8F&link=https%3A%2F%2Fhub.docker.com%2Fr%2Flmq8267%2Fvnts&logo=docker) 
+            
+            这是各平台的压缩版程序
+            
+            -musleabi：只支持软件浮点的设备
+            -musleabihf：支持硬件浮点的设备
+            
+            mips不支持web管理！
+            
+            [官方更新说明](https://github.com/vnt-dev/vnts/releases)
+            
           tag_name: ${{ needs.check.outputs.ver }}
           files: |
-              /opt/upx/*
+            /opt/upx/*
       - 
-       name: 删除工作流
-       uses: GitRML/delete-workflow-runs@main
-       with:
-        token: ${{ secrets.c8 }}
-        retain_days: 2
-        keep_minimum_runs: 1
- keepalive-workflow:
-    # github超过60天未提交将自动停止工作流
-    name: 工作流保活 
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      #- uses: gautamkrishnar/keepalive-workflow@v2
-        #with:
-          #use_api: true
-      - name: 检查上次提交日期
-        id: check_commit_date
-        run: |
-          # 获取上次提交日期（格式：YYYY-MM-DD）
-          LAST_COMMIT_DATE=$(git log -1 --format=%cd --date=short)
-          echo "上次提交日期: $LAST_COMMIT_DATE"
-          # 计算当前日期和上次提交日期的差值（单位：天）
-          LAST_COMMIT_TIMESTAMP=$(date -d "$LAST_COMMIT_DATE" +%s)
-          CURRENT_TIMESTAMP=$(date +%s)
-          DIFF_DAYS=$(( (CURRENT_TIMESTAMP - LAST_COMMIT_TIMESTAMP) / 86400 ))
-          echo "距离上次提交以来的天数: $DIFF_DAYS"
-          echo "diff_days=$DIFF_DAYS" >> $GITHUB_ENV
-      - name: 执行空提交
-        if: ${{ env.diff_days > 50 }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # 创建空提交
-          git commit --allow-empty -m "自动空提交，保持仓库活跃"
-          git push
+        name: 删除工作流
+        uses: GitRML/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.c8 }}
+          retain_days: 2
+          keep_minimum_runs: 1
+keepalive-workflow:
+  # github超过60天未提交将自动停止工作流
+  name: 工作流保活 
+  runs-on: ubuntu-latest
+  permissions:
+    actions: write
+    contents: write
+  steps:
+    - uses: actions/checkout@v4
+    - name: 检查上次提交日期
+      id: check_commit_date
+      run: |
+        # 获取上次提交日期（格式：YYYY-MM-DD）
+        LAST_COMMIT_DATE=$(git log -1 --format=%cd --date=short)
+        echo "上次提交日期: $LAST_COMMIT_DATE"
+        # 计算当前日期和上次提交日期的差值（单位：天）
+        LAST_COMMIT_TIMESTAMP=$(date -d "$LAST_COMMIT_DATE" +%s)
+        CURRENT_TIMESTAMP=$(date +%s)
+        DIFF_DAYS=$(( (CURRENT_TIMESTAMP - LAST_COMMIT_TIMESTAMP) / 86400 ))
+        echo "距离上次提交以来的天数: $DIFF_DAYS"
+        echo "diff_days=$DIFF_DAYS" >> $GITHUB_ENV
+    - name: 执行空提交
+      if: ${{ env.diff_days > 50 }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        # 创建空提交
+        git commit --allow-empty -m "自动空提交，保持仓库活跃"
+        git push
