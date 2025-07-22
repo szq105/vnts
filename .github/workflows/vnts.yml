@@ -163,7 +163,7 @@ jobs:
         with:
           version: v4.2.4
           install-only: true
-      - name: 打包压缩
+      - name: 打包压缩并上传产物
         run: |
           mkdir -p /opt/upx
           mv /opt/vnts/target/${TARGET}/release/vnts /opt/upx/${NAME}
@@ -175,6 +175,21 @@ jobs:
            [[ $TARGET == mips-unknown-linux-musl ]] && cp -rf /opt/vnts/WEB_static.tar.gz /opt/upx/WEB_static.tar.gz
           fi
           echo "build_time=$(date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
+      - name: 上传编译产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: vnts-release-${{ matrix.TARGET }}
+          path: /opt/upx/*
+
+  release-binaries:
+    name: 发布二进制文件
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有编译产物
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
       - name: 发布
         uses: softprops/action-gh-release@v1
         with:
@@ -190,45 +205,74 @@ jobs:
             mips不支持web管理！
             
             [官方更新说明](https://github.com/vnt-dev/vnts/releases)
-            
           tag_name: ${{ needs.check.outputs.ver }}
           files: |
-            /opt/upx/*
-      # MODIFIED: Removed stray '-' that was here
-      - name: 删除工作流
-        uses: GitRML/delete-workflow-runs@main
-        with:
-          token: ${{ secrets.c8 }}
-          retain_days: 2
-          keep_minimum_runs: 1
+            ./artifacts/*/*
 
-  # MODIFIED: Indented this entire block to be a job under the 'jobs:' key
-  keepalive-workflow:
-    # github超过60天未提交将自动停止工作流
-    name: 工作流保活 
+  build-and-push-docker:
+    name: 构建并推送Docker镜像
+    needs: build # 依赖于build任务
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载 x86_64 编译产物
+        uses: actions/download-artifact@v3
+        with:
+          name: vnts-release-x86_64-unknown-linux-musl
+          path: ./vnts-docker
+      
+      - name: 登录到 Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: 构建并推送到 Docker Hub
+        uses: docker/build-push-action@v4
+        with:
+          context: ./vnts-docker
+          # 使用下载的二进制文件作为上下文
+          file: ./vnts-docker/Dockerfile # 指定Dockerfile路径
+          push: true
+          tags: |
+            lmq8267/vnts:${{ needs.check.outputs.ver }}
+            lmq8267/vnts:latest
+          # 创建一个简单的Dockerfile
+          build-args: |
+            VNT_BINARY=vnts_x86_64-unknown-linux-musl
+
+  delete-and-keep-workflows:
+    name: 清理并保活工作流
+    needs: [release-binaries, build-and-push-docker] # 依赖于发布和Docker推送任务
     runs-on: ubuntu-latest
     permissions:
       actions: write
       contents: write
     steps:
+      - name: 删除旧的工作流运行记录
+        uses: GitRML/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.c8 }}
+          retain_days: 2
+          keep_minimum_runs: 1
       - uses: actions/checkout@v4
       - name: 检查上次提交日期
         id: check_commit_date
         run: |
-          # 获取上次提交日期（格式：YYYY-MM-DD）
           LAST_COMMIT_DATE=$(git log -1 --format=%cd --date=short)
           echo "上次提交日期: $LAST_COMMIT_DATE"
-          # 计算当前日期和上次提交日期的差值（单位：天）
           LAST_COMMIT_TIMESTAMP=$(date -d "$LAST_COMMIT_DATE" +%s)
           CURRENT_TIMESTAMP=$(date +%s)
           DIFF_DAYS=$(( (CURRENT_TIMESTAMP - LAST_COMMIT_TIMESTAMP) / 86400 ))
           echo "距离上次提交以来的天数: $DIFF_DAYS"
           echo "diff_days=$DIFF_DAYS" >> $GITHUB_ENV
-      - name: 执行空提交
+      - name: 执行空提交以保活
         if: ${{ env.diff_days > 50 }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # 创建空提交
           git commit --allow-empty -m "自动空提交，保持仓库活跃"
           git push
+
