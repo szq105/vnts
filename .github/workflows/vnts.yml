@@ -78,7 +78,7 @@ jobs:
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
-          # FINAL FIX: Only set specific Rust version for MIPS targets, just like the reference workflow.
+          # 关键修复：只为有兼容性问题的MIPS平台指定旧版Rust，其他平台使用默认最新稳定版
           if [[ "${{ matrix.TARGET }}" == "mips-unknown-linux-musl" || "${{ matrix.TARGET }}" == "mipsel-unknown-linux-musl" ]]; then
             echo "为 MIPS 目标设置 Rust 版本为 1.72.1"
             rustup install 1.72.1
