@@ -32,39 +32,39 @@ jobs:
       matrix:
         include:
           - TARGET: aarch64-unknown-linux-musl
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: aarch64-linux-musl-strip
           - TARGET: armv7-unknown-linux-musleabihf
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: armv7l-linux-musleabihf-strip
           - TARGET: armv7-unknown-linux-musleabi
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: armv7m-linux-musleabi-strip
           - TARGET: arm-unknown-linux-musleabihf
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: arm-linux-musleabihf-strip
           - TARGET: arm-unknown-linux-musleabi
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: arm-linux-musleabi-strip
           - TARGET: mipsel-unknown-linux-musl
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: mipsel-linux-musl-strip
           - TARGET: mips-unknown-linux-musl
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,wg
             STRIP: mips-linux-musl-strip
           - TARGET: x86_64-unknown-linux-musl
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
             STRIP: strip
           - TARGET: x86_64-unknown-freebsd
-            OS: ubuntu-latest
+            OS: ubuntu-20.04 # MODIFIED: Locked to a stable OS version
             FEATURES: normal,web,wg
     runs-on: ${{ matrix.OS }}
     env:
@@ -78,7 +78,6 @@ jobs:
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
-          # 关键修复：只为有兼容性问题的MIPS平台指定旧版Rust，其他平台使用默认最新稳定版
           if [[ "${{ matrix.TARGET }}" == "mips-unknown-linux-musl" || "${{ matrix.TARGET }}" == "mipsel-unknown-linux-musl" ]]; then
             echo "为 MIPS 目标设置 Rust 版本为 1.72.1"
             rustup install 1.72.1
