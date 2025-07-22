@@ -75,6 +75,10 @@ jobs:
       FEATURES: ${{ matrix.FEATURES }}
     steps:
       - uses: actions/checkout@v4
+      - name: 设置Rust版本为1.72.1
+        run: |
+          rustup install 1.72.1
+          rustup default 1.72.1
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
@@ -106,10 +110,6 @@ jobs:
             wget -c https://github.com/lmq8267/Toolchain/releases/download/musl-cross/$MUSL_URI.tgz -P /opt/musl_gcc/
             tar zxf /opt/musl_gcc/$MUSL_URI.tgz -C /opt/musl_gcc/
             sudo ln -s /opt/musl_gcc/$MUSL_URI/bin/*gcc /usr/bin/
-          if [[ $TARGET == mips-unknown-linux-musl ]] || [[ $TARGET == mipsel-unknown-linux-musl ]] ; then
-          rustup install 1.72.1
-          rustup default 1.72.1
-          fi
           if [[ $TARGET =~ "x86_64-unknown-linux-musl" ]] ; then
             sudo apt-get update && sudo apt-get install -qq musl-tools
           fi
