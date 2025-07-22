@@ -75,14 +75,16 @@ jobs:
       FEATURES: ${{ matrix.FEATURES }}
     steps:
       - uses: actions/checkout@v4
-      # MODIFIED: Lock the Rust version to a known stable version for ALL build jobs to ensure consistency.
-      - name: 设置Rust版本为1.72.1
-        run: |
-          rustup install 1.72.1
-          rustup default 1.72.1
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
+          # FINAL FIX: Only set specific Rust version for MIPS targets, just like the reference workflow.
+          if [[ "${{ matrix.TARGET }}" == "mips-unknown-linux-musl" || "${{ matrix.TARGET }}" == "mipsel-unknown-linux-musl" ]]; then
+            echo "为 MIPS 目标设置 Rust 版本为 1.72.1"
+            rustup install 1.72.1
+            rustup default 1.72.1
+          fi
+          
           case $TARGET in 
             mipsel-unknown-linux-musl)
               MUSL_URI=mipsel-linux-musl-cross
