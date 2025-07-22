@@ -20,9 +20,10 @@ jobs:
         id: getversion
         run: |
           ver=`curl -s https://api.github.com/repos/vnt-dev/vnts/releases/latest | jq -r '.tag_name'`
-          cver=`curl -s https://api.github.com/repos/lmq8267/vnts/releases/latest | jq -r '.tag_name'`
+          cver=`curl -s https://api.github.com/repos/szq105/vnts/releases/latest | jq -r '.tag_name'`
           echo "ver=${ver}" >> $GITHUB_OUTPUT
           echo "cver=${cver}" >> $GITHUB_OUTPUT
+          
   build:
     needs: check
     if: ${{ needs.check.outputs.ver != needs.check.outputs.cver }}
@@ -73,7 +74,7 @@ jobs:
       STRIP: ${{ matrix.STRIP }}
       FEATURES: ${{ matrix.FEATURES }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: 设置编译环境
         if: ${{ matrix.TARGET != 'x86_64-unknown-freebsd' }}
         run: |
@@ -163,7 +164,7 @@ jobs:
         with:
           version: v4.2.4
           install-only: true
-      - name: 打包压缩并上传产物
+      - name: 打包压缩
         run: |
           mkdir -p /opt/upx
           mv /opt/vnts/target/${TARGET}/release/vnts /opt/upx/${NAME}
@@ -195,7 +196,7 @@ jobs:
         with:
           token: ${{ secrets.c8 }}
           body: |
-            > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)![](https://img.shields.io/docker/image-size/lmq8267/vnts/${{ needs.check.outputs.ver }}?label=%E9%95%9C%E5%83%8F%E5%A4%A7%E5%B0%8F&link=https%3A%2F%2Fhub.docker.com%2Fr%2Flmq8267%2Fvnts&logo=docker) 
+            > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ needs.check.outputs.ver }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)![](https://img.shields.io/docker/image-size/szq105/vnts/${{ needs.check.outputs.ver }}?label=%E9%95%9C%E5%83%8F%E5%A4%A7%E5%B0%8F&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fszq105%2Fvnts&logo=docker) 
             
             这是各平台的压缩版程序
             
@@ -211,7 +212,7 @@ jobs:
 
   build-and-push-docker:
     name: 构建并推送Docker镜像
-    needs: build # 依赖于build任务
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: 下载 x86_64 编译产物
@@ -219,33 +220,28 @@ jobs:
         with:
           name: vnts-release-x86_64-unknown-linux-musl
           path: ./vnts-docker
-      
       - name: 登录到 Docker Hub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v2
-
       - name: 构建并推送到 Docker Hub
         uses: docker/build-push-action@v4
         with:
           context: ./vnts-docker
-          # 使用下载的二进制文件作为上下文
-          file: ./vnts-docker/Dockerfile # 指定Dockerfile路径
+          file: ./Dockerfile
           push: true
           tags: |
-            lmq8267/vnts:${{ needs.check.outputs.ver }}
-            lmq8267/vnts:latest
-          # 创建一个简单的Dockerfile
+            szq105/vnts:${{ needs.check.outputs.ver }}
+            szq105/vnts:latest
           build-args: |
             VNT_BINARY=vnts_x86_64-unknown-linux-musl
 
   delete-and-keep-workflows:
     name: 清理并保活工作流
-    needs: [release-binaries, build-and-push-docker] # 依赖于发布和Docker推送任务
+    needs: [release-binaries, build-and-push-docker]
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -275,4 +271,3 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit --allow-empty -m "自动空提交，保持仓库活跃"
           git push
-
