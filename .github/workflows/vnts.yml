@@ -209,6 +209,7 @@ jobs:
             mips不支持web管理！
             
             [官方更新说明](https://github.com/vnt-dev/vnts/releases)
+            
           tag_name: ${{ needs.check.outputs.ver }}
           files: |
             ./artifacts/*/*
