@@ -21,7 +21,7 @@ docker run \
   -v /opt/vnts_data:/data \
   -e TZ=Asia/Shanghai \
   --restart=always \
-  -d lmq8267/vnts \
+  -d szq105/vnts \
   --allow-wg \
   -p 29872 \
   -P 29870 \
@@ -48,7 +48,7 @@ docker run \
 version: '3.9'
 services:
     vnts:
-        image: lmq8267/vnts:latest
+        image: szq105/vnts:latest
         container_name: vnts
         restart: always
         ports:
@@ -91,7 +91,7 @@ docker logs -f vnts
 
 更新镜像并重启:
 
-docker pull lmq8267/vnts:latest
+docker pull szq105/vnts:latest
 
 停止并删除旧容器 (docker rm -f vnts 或 docker-compose down)。
 
